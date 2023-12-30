@@ -55,7 +55,7 @@ from pymodbus.client import (
 )
 from pymodbus.exceptions import ModbusIOException
 
-__version__ = "0.72"
+__version__ = "0.73"
 mqtt_port = None
 mqc = None
 parser = None
@@ -256,11 +256,12 @@ class Poller:
             print("Reference topic ("+str(myRef.topic)+") is already occupied for poller \""+self.topic+"\", therefore ignoring it.")
 
 class Reference:
-    def __init__(self,topic,reference,dtype,rw,poller,scaling):
+    def __init__(self,topic,reference,dtype,rw,poller,scaling,decimalplaces):
         self.topic=topic
         self.reference=int(reference)
         self.lastval=None
         self.scale=None
+        self.decimalplaces=None
         self.regAmount=None
         self.stringLength=None
 
@@ -270,6 +271,14 @@ class Reference:
             except ValueError as e:
               if verbosity>=1:
                 print("Scaling Error:", e)
+
+        if decimalplaces:
+            try:
+                self.decimalplaces=abs(int(decimalplaces))
+            except ValueError as e:
+              if verbosity>=1:
+                print("Decimal Places Error:", e)
+
         self.rw=rw
         self.relativeReference=None
         self.writefunctioncode=None
@@ -293,6 +302,8 @@ class Reference:
         # but only after the intial connection was made.
         if mqc.initial_connection_made == True:
             val = self.combine(self,val)
+            if self.decimalplaces:
+                val = round(val, self.decimalplaces)
             if self.lastval != val or args.always_publish:
                 self.lastval = val
                 if self.scale:
@@ -478,8 +489,8 @@ async def async_main():
     if verbosity>=0:
         print('Starting spiciermodbus2mqtt V%s with topic prefix \"%s\"' %(__version__, globaltopic))
 
-    # type, topic, slaveid,  ref,           size, functioncode, rate
-    # type, topic, reference, rw, interpretation,      scaling,
+    # type, topic, slaveid,  ref,           size, functioncode,          rate
+    # type, topic, reference, rw, interpretation,      scaling, decimalplaces
     
     # Now let's read the config file
     with open(args.config,"r") as csvfile:
@@ -535,7 +546,7 @@ async def async_main():
                 continue
             elif row["type"]=="reference" or row["type"]=="ref":
                 if currentPoller is not None:
-                    currentPoller.addReference(Reference(row["topic"],row["col2"],row["col4"],row["col3"],currentPoller,row["col5"]))
+                    currentPoller.addReference(Reference(row["topic"],row["col2"],row["col4"],row["col3"],currentPoller,row["col5"],row["col6"]))
                 else:
                     print("No poller for reference "+row["topic"]+".")
     
