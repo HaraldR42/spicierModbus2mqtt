@@ -303,7 +303,7 @@ class Reference:
         if mqc.initial_connection_made == True:
             val = self.combine(self,val)
             if self.decimalplaces:
-                val = round(val, self.decimalplaces)
+                val = round(float(val), self.decimalplaces)
             if self.lastval != val or args.always_publish:
                 self.lastval = val
                 if self.scale:
